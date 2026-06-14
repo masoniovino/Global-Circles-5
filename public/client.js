@@ -29,6 +29,7 @@ let selectedCountry = null;
 let camera = null;
 let boosts = { speedMult: 1.0, sizeMult: 1.0 };
 let speedCost = 50, sizeCost = 80;
+let lastCoinCount = -1, lastSpeedCost = -1, lastSizeCost = -1;
 
 const keys = { w: false, a: false, s: false, d: false };
 let mouse = { x: 0, y: 0, active: false };
@@ -123,17 +124,24 @@ socket.on("state", (snap) => {
   serverBombs = snap.bombs || [];
   serverPoison = snap.poisonZones || [];
 
-  // merge entity data
+  // merge entity data (preserve display positions for smooth interpolation)
   const incoming = {};
-  for (const e of snap.entities) incoming[e.id] = e;
+  for (const e of snap.entities) {
+    const prev = serverEntities[e.id];
+    incoming[e.id] = {
+      ...e,
+      displayX: prev ? (prev.displayX ?? prev.x) : e.x,
+      displayY: prev ? (prev.displayY ?? prev.y) : e.y,
+    };
+  }
 
   // spawn particles for newly-dead
   for (const [id, prev] of Object.entries(serverEntities)) {
     if (prev.alive && incoming[id] && !incoming[id].alive) {
-      spawnParticles(prev.x, prev.y, colorForName(prev.name));
+      spawnParticles(prev.displayX ?? prev.x, prev.displayY ?? prev.y, colorForName(prev.name));
     }
     if (prev.alive && !incoming[id]) {
-      spawnParticles(prev.x, prev.y, colorForName(prev.name));
+      spawnParticles(prev.displayX ?? prev.x, prev.displayY ?? prev.y, colorForName(prev.name));
     }
   }
 
@@ -224,8 +232,11 @@ function togglePause() {
   paused = !paused;
   pauseToggleBtn.textContent = paused ? "▶ Resume" : "⏸ Pause";
   SoundManager.setPaused(paused);
+  // Always sync panel visibility with paused state (fixes P-key desync)
+  if (paused) pausePanel.classList.remove("hidden");
+  else pausePanel.classList.add("hidden");
 }
-pauseToggleBtn.addEventListener("click", () => { togglePause(); pausePanel.classList.toggle("hidden"); ensureAudioStarted(); });
+pauseToggleBtn.addEventListener("click", () => { togglePause(); ensureAudioStarted(); });
 document.getElementById("music-toggle").addEventListener("change", (e) => SoundManager.setMusicOn(e.target.checked));
 document.getElementById("music-volume").addEventListener("input", (e) => SoundManager.setMusicVolume(parseFloat(e.target.value)));
 document.getElementById("sfx-volume").addEventListener("input", (e) => SoundManager.setSfxVolume(parseFloat(e.target.value)));
@@ -344,7 +355,7 @@ function drawCoins() {
 function drawEntities() {
   for (const e of Object.values(serverEntities)) {
     if (!e.alive) continue;
-    const s = camera.worldToScreen(e.x, e.y);
+    const s = camera.worldToScreen(e.displayX ?? e.x, e.displayY ?? e.y);
     const r = e.radius * camera.zoom;
     if (s.x < -r-50 || s.x > camera.viewWidth+r+50 || s.y < -r-50 || s.y > camera.viewHeight+r+50) continue;
 
@@ -452,7 +463,7 @@ function drawMinimap() {
   for (const e of Object.values(serverEntities)) {
     if (!e.alive) continue;
     const isMe = e.id === myEntityId;
-    mctx.beginPath(); mctx.arc(e.x*sx, e.y*sy, isMe ? 3 : e.isPlayer ? 3 : 2, 0, Math.PI*2);
+    mctx.beginPath(); mctx.arc((e.displayX??e.x)*sx, (e.displayY??e.y)*sy, isMe ? 3 : e.isPlayer ? 3 : 2, 0, Math.PI*2);
     mctx.fillStyle = isMe ? "#3a7bd5" : e.isPlayer ? "#f90" : "#999";
     mctx.fill();
   }
@@ -488,12 +499,21 @@ function gameLoop(now) {
   const dt = Math.min(0.05, (now - lastFrame) / 1000);
   lastFrame = now;
 
+  // Interpolate entity display positions toward server positions for smooth rendering
+  const lerpFactor = Math.min(1, dt * 14);
+  for (const e of Object.values(serverEntities)) {
+    if (!e.alive) continue;
+    if (e.displayX === undefined) { e.displayX = e.x; e.displayY = e.y; continue; }
+    e.displayX += (e.x - e.displayX) * lerpFactor;
+    e.displayY += (e.y - e.displayY) * lerpFactor;
+  }
+
   if (!paused) {
     updateParticles(dt);
 
     const me = serverEntities[myEntityId];
     if (me && camera) {
-      camera.follow(me.x, me.y);
+      camera.follow(me.displayX ?? me.x, me.displayY ?? me.y);
       camera.setZoomForRadius(me.radius);
     }
     if (camera) camera.updateZoom();
@@ -507,7 +527,11 @@ function gameLoop(now) {
     drawParticles();
     drawMinimap();
     updateHUD();
-    updateShopButtons();
+    // Only update shop buttons when values actually change (not every frame)
+    if (myCoins !== lastCoinCount || speedCost !== lastSpeedCost || sizeCost !== lastSizeCost) {
+      updateShopButtons();
+      lastCoinCount = myCoins; lastSpeedCost = speedCost; lastSizeCost = sizeCost;
+    }
 
     if (paused) {
       ctx.fillStyle = "rgba(0,0,0,0.35)"; ctx.fillRect(0,0,canvas.width,canvas.height);

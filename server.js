@@ -268,7 +268,7 @@ function moveEntity(e, dt) {
 }
 
 // ── Main server tick ──────────────────────────────────────────────────────────
-const TICK_RATE = 20; // hz
+const TICK_RATE = 30; // hz
 const TICK_MS = 1000 / TICK_RATE;
 let lastTick = Date.now();
 
