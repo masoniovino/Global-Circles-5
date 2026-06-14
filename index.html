@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Global Circles</title>
+<link rel="stylesheet" href="styles.css">
+<style>
+/* ── Lobby / country picker ── */
+#lobby {
+  position: fixed; inset: 0;
+  background: linear-gradient(135deg, #0b1622 0%, #1a2940 100%);
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  z-index: 100; color: #fff;
+}
+#lobby h1 { font-size: 42px; margin-bottom: 4px; letter-spacing: 2px; }
+#lobby p.subtitle { color: #8ab; margin-bottom: 20px; font-size: 15px; }
+#lobby-error { color: #ff6b6b; font-size: 13px; min-height: 18px; margin-bottom: 6px; }
+
+#country-search {
+  width: 320px; padding: 10px 14px; font-size: 15px;
+  border: 2px solid #3a7bd5; border-radius: 8px;
+  background: rgba(255,255,255,0.08); color: #fff;
+  outline: none; margin-bottom: 10px;
+}
+#country-search::placeholder { color: #6a8ab5; }
+
+#country-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+  max-height: 380px; overflow-y: auto;
+  width: 700px; padding: 4px;
+  scrollbar-width: thin; scrollbar-color: #3a7bd5 transparent;
+}
+.country-card {
+  background: rgba(255,255,255,0.07);
+  border: 1.5px solid rgba(255,255,255,0.12);
+  border-radius: 8px; padding: 8px 6px;
+  text-align: center; cursor: pointer;
+  transition: all 0.15s; user-select: none;
+}
+.country-card:hover:not(.taken) { background: rgba(58,123,213,0.3); border-color: #3a7bd5; }
+.country-card.selected { background: rgba(58,123,213,0.5); border-color: #5a9bf5; box-shadow: 0 0 0 2px #3a7bd5; }
+.country-card.taken { opacity: 0.35; cursor: not-allowed; }
+.country-card .flag { font-size: 22px; }
+.country-card .cname { font-size: 10px; margin-top: 2px; color: #cde; line-height: 1.2; }
+.country-card .cpop { font-size: 9px; color: #8ab; }
+
+#join-btn {
+  margin-top: 14px; padding: 12px 40px; font-size: 16px; font-weight: bold;
+  background: #3a7bd5; color: #fff; border: none; border-radius: 8px;
+  cursor: pointer; letter-spacing: 1px; transition: background 0.15s;
+}
+#join-btn:hover:not(:disabled) { background: #5a9bf5; }
+#join-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+#players-online { font-size: 12px; color: #6a8ab5; margin-top: 8px; }
+
+/* online badge in HUD */
+#online-count { font-size: 12px; color: #6a9; margin-top: 2px; }
+</style>
+</head>
+<body>
+
+<!-- ── LOBBY ── -->
+<div id="lobby">
+  <h1>🌍 Global Circles</h1>
+  <p class="subtitle">Eat smaller countries. Become the last nation standing.</p>
+  <div id="lobby-error"></div>
+  <input id="country-search" type="text" placeholder="🔍 Search country…" autocomplete="off">
+  <div id="country-grid"></div>
+  <div id="players-online">Connecting…</div>
+  <button id="join-btn" disabled>Choose a Country</button>
+</div>
+
+<!-- ── GAME ── -->
+<canvas id="game" style="display:none"></canvas>
+<audio id="bg-music" src="Hava_Nagila_Original.mp3" loop preload="auto"></audio>
+
+<div id="hud" style="display:none">
+  <div id="player-name">—</div>
+  <div>Population: <span id="pop">0</span></div>
+  <div>Players: <span id="count">0</span></div>
+  <div>🪙 Coins: <span id="coins">0</span></div>
+  <div id="online-count"></div>
+  <div id="boost-indicators"></div>
+</div>
+
+<div id="pausemenu" style="display:none">
+  <button id="pause-toggle">⏸ Pause</button>
+  <div id="pause-panel" class="hidden">
+    <label>Music <input type="checkbox" id="music-toggle" checked></label>
+    <label>Music Volume <input type="range" id="music-volume" min="0" max="1" step="0.01" value="0.3"></label>
+    <label>SFX Volume <input type="range" id="sfx-volume" min="0" max="1" step="0.01" value="0.8"></label>
+    <label>Map Colors <input type="checkbox" id="bg-toggle" checked></label>
+    <hr style="margin:4px 0;border-color:#ddd">
+    <div style="font-weight:bold;font-size:13px;margin-bottom:2px">🛒 Shop</div>
+    <div class="shop-item">
+      <div class="shop-item-info">
+        <span>⚡ Speed Boost</span>
+        <span class="shop-desc">Permanent +10% speed per upgrade</span>
+      </div>
+      <button class="shop-btn" id="buy-speed">50🪙</button>
+    </div>
+    <div class="shop-item">
+      <div class="shop-item-info">
+        <span>🔵 Size Multiplier</span>
+        <span class="shop-desc">Permanent +10% radius per upgrade</span>
+      </div>
+      <button class="shop-btn" id="buy-size">80🪙</button>
+    </div>
+    <div class="shop-item">
+      <div class="shop-item-info">
+        <span>👥 Pop Surge</span>
+        <span class="shop-desc">+10% population now</span>
+      </div>
+      <button class="shop-btn" id="buy-pop" data-cost="120">120🪙</button>
+    </div>
+  </div>
+</div>
+
+<canvas id="minimap" style="display:none"></canvas>
+
+<div id="endscreen" class="hidden">
+  <h1 id="end-title"></h1>
+  <p id="end-stats"></p>
+  <button id="restart">Back to Lobby</button>
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script src="entities.js"></script>
+<script src="camera.js"></script>
+<script src="sounds.js"></script>
+<script src="client.js"></script>
+</body>
+</html>

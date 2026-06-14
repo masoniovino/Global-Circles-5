@@ -1,0 +1,182 @@
+html, body {
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  background: #eef3f7;
+  font-family: -apple-system, Helvetica, Arial, sans-serif;
+}
+
+#game {
+  display: block;
+  background: #eef3f7;
+}
+
+#hud {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  background: rgba(255,255,255,0.88);
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-size: 14px;
+  color: #333;
+  line-height: 1.5;
+}
+
+#hud #player-name {
+  font-weight: bold;
+  font-size: 16px;
+}
+
+#pausemenu {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+#pause-toggle {
+  padding: 6px 14px;
+  font-size: 14px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  background: rgba(255,255,255,0.9);
+  cursor: pointer;
+}
+
+#pause-toggle:hover {
+  background: #fff;
+}
+
+#pause-panel {
+  background: rgba(255,255,255,0.92);
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 13px;
+  color: #333;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 180px;
+}
+
+#pause-panel.hidden {
+  display: none;
+}
+
+#pause-panel label {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+
+#pause-panel input[type="range"] {
+  flex: 1;
+}
+
+#minimap {
+  position: absolute;
+  bottom: 12px;
+  right: 12px;
+  background: rgba(255,255,255,0.85);
+  border: 1px solid #ccc;
+  border-radius: 6px;
+}
+
+#endscreen {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.6);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  text-align: center;
+}
+
+#endscreen.hidden {
+  display: none;
+}
+
+#endscreen h1 {
+  font-size: 48px;
+  margin-bottom: 8px;
+}
+
+#endscreen button {
+  margin-top: 16px;
+  padding: 10px 24px;
+  font-size: 16px;
+  border: none;
+  border-radius: 6px;
+  background: #4caf50;
+  color: #fff;
+  cursor: pointer;
+}
+
+#endscreen button:hover {
+  background: #43a047;
+}
+
+/* Shop items in pause panel */
+.shop-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+}
+
+.shop-item-info {
+  display: flex;
+  flex-direction: column;
+  font-size: 12px;
+}
+
+.shop-desc {
+  color: #888;
+  font-size: 11px;
+}
+
+.shop-btn {
+  padding: 4px 8px;
+  font-size: 12px;
+  border: 1px solid #aaa;
+  border-radius: 5px;
+  background: #fffbe6;
+  cursor: pointer;
+  white-space: nowrap;
+  font-weight: bold;
+}
+
+.shop-btn:hover:not(:disabled) {
+  background: #fff3b0;
+  border-color: #f9a825;
+}
+
+.shop-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+#boost-indicators {
+  font-size: 11px;
+  color: #555;
+  margin-top: 2px;
+}
+
+/* coin pickup flash */
+@keyframes coinPop {
+  0%   { transform: scale(1); opacity: 1; }
+  50%  { transform: scale(1.4); opacity: 1; }
+  100% { transform: scale(1); opacity: 0; }
+}
